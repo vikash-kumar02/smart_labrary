@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Library - Issue & Return</title>
+  <style>
+    body {
+      font-family: "Poppins", sans-serif;
+      background-color: #f5f8fc;
+      margin: 0;
+      padding: 0;
+    }
+
+    header {
+      background-color: #0d47a1;
+      color: white;
+      text-align: center;
+      padding: 15px 0;
+      font-size: 26px;
+      font-weight: bold;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: 40px auto;
+      background: white;
+      border-radius: 12px;
+      padding: 25px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    }
+
+    label {
+      font-weight: 600;
+      display: block;
+      margin-top: 15px;
+    }
+
+    select, input[type="text"] {
+      width: 100%;
+      padding: 10px;
+      margin-top: 8px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 16px;
+    }
+
+    button {
+      width: 48%;
+      padding: 10px;
+      margin-top: 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    .issue-btn {
+      background-color: #1565c0;
+      color: white;
+    }
+
+    .return-btn {
+      background-color: #e53935;
+      color: white;
+    }
+
+    .btn-group {
+      display: flex;
+      justify-content: space-between;
+    }
+
+    footer {
+      text-align: center;
+      background-color: #0d47a1;
+      color: white;
+      padding: 15px;
+      position: fixed;
+      bottom: 0;
+      width: 100%;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+
+  <header>📖 Smart Library - Book Issue & Return</header>
+
+  <div class="container">
+    <label for="studentName">Student Name:</label>
+    <input type="text" id="studentName" placeholder="Enter Student Name">
+
+    <label for="branch">Select Branch:</label>
+    <select id="branch">
+      <option value="">-- Select Branch --</option>
+      <option>Computer Science and Engineering</option>
+      <option>Electrical Engineering</option>
+      <option>Electronics Engineering</option>
+      <option>Civil Engineering</option>
+      <option>Mechanical Engineering</option>
+    </select>
+
+    <label for="bookTitle">Book Title:</label>
+    <input type="text" id="bookTitle" placeholder="Enter Book Title">
+
+    <div class="btn-group">
+      <button class="issue-btn" onclick="issueBook()">📗 Issue Book</button>
+      <button class="return-btn" onclick="returnBook()">📕 Return Book</button>
+    </div>
+  </div>
+
+  <footer>
+    © 2025 Smart Library | Book Issue System by coding brothers
+  </footer>
+
+  <script>
+    function issueBook() {
+      const name = document.getElementById("studentName").value;
+      const branch = document.getElementById("branch").value;
+      const book = document.getElementById("bookTitle").value;
+
+      if (!name || !branch || !book) {
+        alert("Please fill all details before issuing!");
+        return;
+      }
+      alert(`✅ ${book} has been issued to ${name} (${branch})`);
+    }
+
+    function returnBook() {
+      const name = document.getElementById("studentName").value;
+      const book = document.getElementById("bookTitle").value;
+
+      if (!name || !book) {
+        alert("Please enter student name and book title!");
+        return;
+      }
+      alert(`📕 ${book} has been returned by ${name}`);
+    }
+  </script>
+
+</body>
+</html>
