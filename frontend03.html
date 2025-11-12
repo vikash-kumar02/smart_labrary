@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Smart Library - Admin Dashboard</title>
+<style>
+  :root{ --blue:#0d6efd; --bg:#f4f7fb; }
+  body{ font-family:Arial,Helvetica,sans-serif; margin:0; background:var(--bg); }
+  header{ background:var(--blue); color:#fff; padding:14px 20px; display:flex; justify-content:space-between; align-items:center; }
+  header h1{ margin:0; font-size:20px; }
+  header .right { display:flex; gap:10px; align-items:center; }
+  .container{ padding:18px; max-width:1100px; margin:18px auto; }
+  .controls{ display:flex; gap:10px; flex-wrap:wrap; background:#fff; padding:12px; border-radius:8px; box-shadow:0 6px 20px rgba(0,0,0,0.04); align-items:center; }
+  input, select { padding:8px 10px; border-radius:6px; border:1px solid #ccc; }
+  button { padding:9px 12px; border-radius:6px; border:none; background:var(--blue); color:#fff; cursor:pointer; font-weight:700; }
+  table{ width:100%; border-collapse:collapse; margin-top:14px; background:#fff; border-radius:8px; overflow:hidden; box-shadow:0 6px 20px rgba(0,0,0,0.04); }
+  th, td{ padding:10px 12px; border-bottom:1px solid #eee; text-align:left; }
+  th{ background:#094bb5; color:#fff; }
+  td.actions{ width:160px; text-align:right; }
+  button.secondary{ background:#6c757d; }
+  .small-btn{ padding:6px 8px; font-size:13px; margin-left:6px; border-radius:6px; }
+  .danger{ background:#dc3545; color:#fff; }
+  .muted{ color:#666; font-size:13px; }
+  @media (max-width:720px){ .controls{ flex-direction:column; align-items:stretch } td.actions{ text-align:left; } }
+
+   .footer {
+      text-align: center;
+      background-color: #0d47a1;
+      color: white;
+      padding: 15px;
+      position: fixed;
+      bottom: 0;
+      width: 100%;
+      font-size: 14px;
+    }
+</style>
+</head>
+<body>
+<header>
+  <h1>📚 Smart Library — Admin Dashboard</h1>
+  <div class="right">
+    <div class="muted" id="adminName"></div>
+    <button onclick="goHome()" class="secondary">Home</button>
+    <button onclick="goIssue()" class="secondary">Issue</button>
+
+    <button onclick="handleLogout()" class="secondary">Logout</button>
+  </div>
+</header>
+
+<div class="container">
+  <div class="controls">
+    <input id="bName" placeholder="Book Title">
+    <input id="bAuthor" placeholder="Author">
+    <select id="bBranch">
+      <option value="">Select Branch</option>
+      <option>Computer Science and Engineering</option>
+      <option>Electrical Engineering</option>
+      <option>Electronics Engineering</option>
+      <option>Civil Engineering</option>
+      <option>Mechanical Engineering</option>
+    </select>
+    <select id="bSemester">
+      <option value="">Select Semester</option>
+      <option>1st Semester</option>
+      <option>2nd Semester</option>
+      <option>3rd Semester</option>
+      <option>4th Semester</option>
+      <option>5th Semester</option>
+      <option>6th Semester</option>
+    </select>
+    <button onclick="addOrUpdateBook()" id="saveBtn">Add Book</button>
+
+    <input id="searchBox" placeholder="Search by title/author/branch/sem" style="margin-left:auto;">
+    <button onclick="clearFilter()" class="secondary">Clear</button>
+  </div>
+
+  <table id="booksTable">
+    <thead>
+      <tr>
+        <th>Book ID</th>
+        <th>Title</th>
+        <th>Author</th>
+        <th>Branch</th>
+        <th>Semester</th>
+        <th class="actions">Actions</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+  <footer>
+    © 2025 Smart Library | Book Issue System by coding brothers
+  </footer>
+<script>
+const USERS_KEY = 'sl_users';
+const BOOKS_KEY = 'sl_books';
+const CUR_USER = 'sl_currentUser';
+
+function requireAdmin(){
+  const cur = JSON.parse(localStorage.getItem(CUR_USER));
+  if (!cur) { alert('Please login'); window.location.href='frontend02.html'; return null; }
+  if (cur.role !== 'admin') { alert('Access denied: Admins only'); window.location.href='frontend02.html'; return null; }
+  document.getElementById('adminName').textContent = cur.fullName || cur.username;
+  return cur;
+}
+const current = requireAdmin();
+if (!current) throw new Error('No admin access');
+
+let books = JSON.parse(localStorage.getItem(BOOKS_KEY)) || [];
+let editIndex = -1;
+
+// render
+function render(){
+  const tbody = document.querySelector('#booksTable tbody');
+  tbody.innerHTML = '';
+  const q = (document.getElementById('searchBox').value || '').toLowerCase();
+  books.forEach((b, idx) => {
+    // search filter client-side
+    const hay = (b.id+' '+b.name+' '+b.author+' '+b.branch+' '+b.semester).toLowerCase();
+    if (q && !hay.includes(q)) return;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${b.id}</td>
+      <td>${escapeHtml(b.name)}</td>
+      <td>${escapeHtml(b.author)}</td>
+      <td>${escapeHtml(b.branch)}</td>
+      <td>${escapeHtml(b.semester)}</td>
+      <td class="actions">
+        <button class="small-btn" onclick="startEdit(${idx})">Edit</button>
+        <button class="small-btn danger" onclick="removeBook(${idx})">Delete</button>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+}
+function escapeHtml(s){ return (s||'').toString().replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+// Add or update
+function addOrUpdateBook(){
+  const name = document.getElementById('bName').value.trim();
+  const author = document.getElementById('bAuthor').value.trim();
+  const branch = document.getElementById('bBranch').value;
+  const semester = document.getElementById('bSemester').value;
+  if (!name || !author || !branch || !semester) { alert('Fill all fields'); return; }
+
+  if (editIndex === -1){
+    const book = { id: generateId(), name, author, branch, semester };
+    books.unshift(book); // newest on top
+  } else {
+    books[editIndex] = { ...books[editIndex], name, author, branch, semester };
+    editIndex = -1;
+    document.getElementById('saveBtn').textContent = 'Add Book';
+  }
+  localStorage.setItem(BOOKS_KEY, JSON.stringify(books));
+  clearInputs(); render();
+}
+function generateId(){ return 'B'+Math.floor(Math.random()*90000+10000); }
+
+function startEdit(i){
+  editIndex = i;
+  const b = books[i];
+  document.getElementById('bName').value = b.name;
+  document.getElementById('bAuthor').value = b.author;
+  document.getElementById('bBranch').value = b.branch;
+  document.getElementById('bSemester').value = b.semester;
+  document.getElementById('saveBtn').textContent = 'Update Book';
+}
+
+function removeBook(i){
+  if (!confirm('Delete this book?')) return;
+  books.splice(i,1);
+  localStorage.setItem(BOOKS_KEY, JSON.stringify(books));
+  render();
+}
+function clearInputs(){
+  document.getElementById('bName').value=''; document.getElementById('bAuthor').value=''; document.getElementById('bBranch').value=''; document.getElementById('bSemester').value='';
+}
+function handleLogout(){ localStorage.removeItem(CUR_USER); window.location.href='frontend02.html'; }
+function goHome(){ window.location.href='index.html'; }
+function goIssue(){ window.location.href='fronted05.html'; }
+function clearFilter(){ document.getElementById('searchBox').value=''; render(); }
+
+document.getElementById('searchBox').addEventListener('input', render);
+
+// initial load
+render();
+</script>
+</body>
+</html>
