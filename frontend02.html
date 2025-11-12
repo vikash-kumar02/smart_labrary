@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Smart Library - Auth (Register / Login)</title>
+<style>
+  :root { --blue:#0d6efd; --bg:#f4f7fb; }
+  body { font-family: Arial, Helvetica, sans-serif; margin:0; background:var(--bg); display:flex; align-items:center; justify-content:center; min-height:100vh; }
+  .card { background:white; width:940px; max-width:95%; border-radius:10px; box-shadow:0 8px 30px rgba(0,0,0,0.08); display:flex; overflow:hidden; }
+  .left, .right { padding:28px; flex:1; }
+  .left { background:linear-gradient(180deg,var(--blue),#2b8cff); color:white; display:flex; flex-direction:column; justify-content:center; }
+  .left h1 { margin:0 0 10px; font-size:26px; }
+  .left p { opacity:0.95; }
+  .tabs { display:flex; gap:8px; margin-bottom:14px; }
+  .tab-btn { padding:8px 12px; cursor:pointer; background:rgba(255,255,255,0.12); border-radius:6px; border:none; color:white; }
+  .right h2 { margin-top:0; }
+  label { display:block; margin-top:10px; font-weight:600; font-size:14px; }
+  input, select { width:100%; padding:9px 10px; margin-top:6px; border-radius:6px; border:1px solid #ccc; box-sizing:border-box; }
+  .row { display:flex; gap:10px; }
+  .small { flex:1; }
+  button.primary { margin-top:14px; width:100%; padding:10px; background:var(--blue); color:white; border:none; border-radius:6px; cursor:pointer; font-weight:700; }
+  .muted { color:#666; font-size:13px; margin-top:6px; }
+  .msg { color:red; margin-top:8px; min-height:18px; }
+  .link-like { color:var(--blue); cursor:pointer; text-decoration:underline; font-weight:600; display:inline-block; margin-top:8px; }
+  @media (max-width:860px){ .card{flex-direction:column} .left{padding:18px} .right{padding:18px} }
+ 
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="left">
+      <h1>📚 Smart Library</h1>
+      <p>Register as a Student/Admin or Login to manage and view books. Branch & Semester info is stored with user (if student).</p>
+      <div style="margin-top:18px;">
+        <div class="tabs">
+          <button class="tab-btn" id="showLoginBtn">Login</button>
+          <button class="tab-btn" id="showRegisterBtn">Register</button>
+        </div>
+        
+      </div>
+    </div>
+
+    <div class="right">
+      <!-- LOGIN FORM -->
+      <div id="loginForm">
+        <h2>Login</h2>
+        <label>Username</label>
+        <input id="loginUsername" placeholder="Enter username">
+        <label>Password</label>
+        <input id="loginPassword" type="password" placeholder="Enter password">
+        <div class="row" style="margin-top:10px;">
+          <div class="small">
+            <label>Role (optional)</label>
+            <select id="loginRole">
+              <option value="">Auto (detect from account)</option>
+              <option value="admin">Admin</option>
+              <option value="student">Student</option>
+            </select>
+          </div>
+          <div style="width:150px;">
+            <label>&nbsp;</label>
+            <button class="primary" onclick="handleLogin()">Login</button>
+          </div>
+        </div>
+        <div class="msg" id="loginMsg"></div>
+        <div style="margin-top:8px;">Don't have an account? <span class="link-like" onclick="showRegister()">Register here</span></div>
+      </div>
+
+      <!-- REGISTER FORM -->
+      <div id="registerForm" style="display:none;">
+        <h2>Register</h2>
+
+        <label>Full Name</label>
+        <input id="regFullName" placeholder="Your full name">
+
+        <label>Username</label>
+        <input id="regUsername" placeholder="Choose username">
+
+        <label>Password</label>
+        <input id="regPassword" type="password" placeholder="Choose password">
+
+        <label>Role</label>
+        <select id="regRole">
+          <option value="student">Student</option>
+          <option value="admin">Admin</option>
+        </select>
+
+        <div id="studentExtra" style="margin-top:8px;">
+          <label>Branch</label>
+          <select id="regBranch">
+            <option value="">Select Branch</option>
+            <option>Computer Science and Engineering</option>
+            <option>Electrical Engineering</option>
+            <option>Electronics Engineering</option>
+            <option>Civil Engineering</option>
+            <option>Mechanical Engineering</option>
+          </select>
+
+          <label>Semester</label>
+          <select id="regSemester">
+            <option value="">Select Semester</option>
+            <option>1st Semester</option>
+            <option>2nd Semester</option>
+            <option>3rd Semester</option>
+            <option>4th Semester</option>
+            <option>5th Semester</option>
+            <option>6th Semester</option>
+          </select>
+        </div>
+
+        <button class="primary" onclick="handleRegister()">Create Account</button>
+        <div class="msg" id="regMsg"></div>
+        <div style="margin-top:8px;">Already registered? <span class="link-like" onclick="showLogin()">Login here</span></div>
+      </div>
+    </div>
+  </div>
+
+<script>
+/* -------------------------
+  Storage keys & init
+-------------------------*/
+const USERS_KEY = 'sl_users';
+const BOOKS_KEY = 'sl_books';
+const CUR_USER = 'sl_currentUser';
+
+// ensure at least one admin exists (preload)
+function initDefaults(){
+  const users = JSON.parse(localStorage.getItem(USERS_KEY)) || [];
+  if (!users.find(u=>u.username==='admin')) {
+    users.push({ username:'admin', password:'12345', fullName:'Administrator', role:'admin' });
+    localStorage.setItem(USERS_KEY, JSON.stringify(users));
+  }
+  // ensure books array exists
+  if (!localStorage.getItem(BOOKS_KEY)) {
+    const sample = [
+      { id: generateId(), name:'Programming in C', author:'E. Balagurusamy', branch:'Computer Science and Engineering', semester:'1st Semester' },
+      { id: generateId(), name:'Electrical Basics', author:'B.L. Theraja', branch:'Electrical Engineering', semester:'2nd Semester' },
+      { id: generateId(), name:'Digital Electronics', author:'M. Morris Mano', branch:'Electronics Engineering', semester:'4th Semester' },
+      { id: generateId(), name:'Fluid Mechanics', author:'R.K. Rajput', branch:'Civil Engineering', semester:'3rd Semester' },
+      { id: generateId(), name:'Thermodynamics', author:'P.K. Nag', branch:'Mechanical Engineering', semester:'5th Semester' }
+    ];
+    localStorage.setItem(BOOKS_KEY, JSON.stringify(sample));
+  }
+}
+function generateId(){ return 'B'+Math.floor(Math.random()*90000+10000); }
+initDefaults();
+
+/* -------------------------
+  UI: show/hide forms
+-------------------------*/
+const loginFormEl = document.getElementById('loginForm');
+const registerFormEl = document.getElementById('registerForm');
+document.getElementById('showLoginBtn').onclick = showLogin;
+document.getElementById('showRegisterBtn').onclick = showRegister;
+
+function showLogin(){ loginFormEl.style.display='block'; registerFormEl.style.display='none'; clearMsgs(); }
+function showRegister(){ loginFormEl.style.display='none'; registerFormEl.style.display='block'; clearMsgs(); }
+
+/* -------------------------
+  Registration
+-------------------------*/
+function handleRegister(){
+  const fullName = document.getElementById('regFullName').value.trim();
+  const username = document.getElementById('regUsername').value.trim();
+  const password = document.getElementById('regPassword').value;
+  const role = document.getElementById('regRole').value;
+  const branch = document.getElementById('regBranch').value;
+  const semester = document.getElementById('regSemester').value;
+  const msg = document.getElementById('regMsg');
+  msg.style.color = 'red';
+
+  if (!fullName || !username || !password || !role) { msg.textContent='Please fill required fields.'; return; }
+  if (role==='student' && (!branch || !semester)) { msg.textContent='Students must select branch and semester.'; return; }
+
+  const users = JSON.parse(localStorage.getItem(USERS_KEY)) || [];
+  if (users.find(u=>u.username === username)) { msg.textContent='Username already taken.'; return; }
+
+  users.push({ fullName, username, password, role, branch, semester });
+  localStorage.setItem(USERS_KEY, JSON.stringify(users));
+  msg.style.color = 'green';
+  msg.textContent = 'Registration successful! You can login now.';
+  // clear form
+  document.getElementById('regFullName').value = '';
+  document.getElementById('regUsername').value = '';
+  document.getElementById('regPassword').value = '';
+  document.getElementById('regBranch').value = '';
+  document.getElementById('regSemester').value = '';
+  // switch to login after short delay
+  setTimeout(()=>{ showLogin(); }, 900);
+}
+
+/* -------------------------
+  Login
+-------------------------*/
+function handleLogin(){
+  const username = document.getElementById('loginUsername').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const roleHint = document.getElementById('loginRole').value;
+  const msg = document.getElementById('loginMsg');
+  msg.textContent='';
+
+  if (!username || !password) { msg.textContent='Please enter credentials.'; return; }
+
+  const users = JSON.parse(localStorage.getItem(USERS_KEY)) || [];
+  const user = users.find(u => u.username === username && u.password === password);
+
+  if (!user) { msg.textContent = 'Invalid username or password.'; return; }
+
+  // optional: enforce roleHint match if selected
+  if (roleHint && user.role !== roleHint) {
+    msg.textContent = `Account is not a ${roleHint}.`;
+    return;
+  }
+
+  // set current session
+  localStorage.setItem(CUR_USER, JSON.stringify(user));
+
+  // redirect based on role
+  if (user.role === 'admin') window.location.href = 'frontend03.html';
+  else window.location.href = 'frontend04.html';
+}
+
+/* -------------------------
+  helper
+-------------------------*/
+function clearMsgs(){ document.getElementById('loginMsg').textContent=''; document.getElementById('regMsg').textContent=''; }
+
+/* Hide student extra fields if role changes in register */
+document.getElementById('regRole').addEventListener('change', ()=>{
+  const isStudent = document.getElementById('regRole').value === 'student';
+  document.getElementById('studentExtra').style.display = isStudent ? 'block' : 'none';
+});
+// initialize
+document.getElementById('studentExtra').style.display = 'block';
+</script>
+</body>
+</html>
